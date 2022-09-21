@@ -31,11 +31,13 @@ class TemplateFitter {
     void SetFitFunction(FunctionObject *fobj);
     void AddParameter(TString lName, TString lTitle, Double_t l_val, Double_t l_min, Double_t l_max); //parameters
     void AddVariable(TString lName, TString lTitle, Double_t l_min, Double_t l_max); //variables ( = dimensions)
+    TList *getParList() { return fParList; };
     // void ResetParList() {if(fArgList) delete fArgList; };
     // void SetBase(TH1 *inh) {if(tmplH) delete tmplH; tmplH = (TH2*)inh->Clone("l_tmplH"); tmplH->SetDirectory(0); };
     Bool_t Fit(Bool_t drawFit=kFALSE);
     Double_t getVal(Int_t ind) {return ((RooRealVar*)fParList->At(ind))->getVal();}; //0 for G, 1 for F, 2 for v2, 3 for v3
     Double_t getErr(Int_t ind) {return ((RooRealVar*)fParList->At(ind))->getError();};
+    TF1 *getFitFunction() { return totFunc; };
   protected:
     TH1 *dataH;
     TF1 *totFunc;

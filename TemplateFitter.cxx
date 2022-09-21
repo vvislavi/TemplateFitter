@@ -2,7 +2,6 @@
 using namespace RooFit;
 TemplateFitter::TemplateFitter():
   dataH(0),
-  // tmplH(0),
   totFunc(0),
   fParList(0)
 {
@@ -50,19 +49,6 @@ Bool_t TemplateFitter::Fit(Bool_t drawFit) {
   else { printf("Currently, only 1-3 dimensions are supported.\n"); return kFALSE; };
   //Perform fit
   frfn->chi2FitTo(dsig);//signal is divided by bin width at this point
-  if(!drawFit) return 1;
-  // for drawing, need to use unscaled distribution. Don't know how this works for 2D dists just yet
-  RooDataHist dsig2("dsig2", "dsig2", lVarList, Import(*dataH,kFALSE));
-
-  TH2* ph2 = x.createHistogram("x vs y pdf",y);
-  frfn->fillHistogram(ph2,RooArgList(x,y)) ;
-  ph2->Draw("colz");
-/*
-  auto frame = x.frame(Title("No template uncertainties"));
-  dsig.plotOn(frame);
-  dsig2.plotOn(frame);
-  frame->Draw();
-  */
   return 1;
 };
 void TemplateFitter::SetFitFunction(FunctionObject *fobj) {
@@ -104,20 +90,17 @@ Bool_t TemplateFitter::rescaleHistogram(Bool_t divide) {
   if(!fNx) scale*=dataH->GetXaxis()->GetBinWidth(1);
   if(!fNy && f_Dim>1) scale*=dataH->GetYaxis()->GetBinWidth(1);
   if(!fNz && f_Dim>2) scale*=dataH->GetZaxis()->GetBinWidth(1);
-  if(!fNx && !fNy && !fNz) {dataH->Scale(divide?(1./scale):scale); return kTRUE; }; //In case all bin are homogenious in their dimensions, then just scale the whole histogram
+  if(!fNx && !fNy && !fNz) { dataH->Scale(divide?(1./scale):scale); return kTRUE; }; //In case all bin are homogenious in their dimensions, then just scale the whole histogram
   for(Int_t i=1;i<=dataH->GetNbinsX();i++) {
-    Double_t x_scale=scale;
-    if(fNx) x_scale*=dataH->GetXaxis()->GetBinWidth(i);
+    Double_t x_scale=dataH->GetXaxis()->GetBinWidth(i);
     if(f_Dim<2) ScaleBin(dataH,divide?(1./x_scale):x_scale,i);
     else {
       for(Int_t j=1;j<=dataH->GetNbinsY();j++){
-        Double_t xy_scale=x_scale;
-        if(fNy) xy_scale*=dataH->GetYaxis()->GetBinWidth(j);
+        Double_t xy_scale=x_scale*dataH->GetYaxis()->GetBinWidth(j);
         if(f_Dim<3) ScaleBin(dataH,divide?(1./xy_scale):xy_scale,i,j);
         else {
           for(Int_t k=1;k<=dataH->GetNbinsZ();k++) {
-            Double_t xyz_scale=xy_scale;
-            if(fNz) xyz_scale*=dataH->GetZaxis()->GetBinWidth(k);
+            Double_t xyz_scale=xy_scale*dataH->GetZaxis()->GetBinWidth(k);
             ScaleBin(dataH,divide?(1./xyz_scale):xyz_scale,i,j,k);
           }
         }
@@ -127,7 +110,7 @@ Bool_t TemplateFitter::rescaleHistogram(Bool_t divide) {
   return kTRUE;
 }
 void TemplateFitter::ScaleBin(TH1 *inh, Double_t scale, Int_t bx, Int_t by, Int_t bz) {
-  Int_t binNo = inh->FindBin(bx,by,bz);
+  Int_t binNo = inh->GetBin(bx,by,bz);
   inh->SetBinContent(binNo,inh->GetBinContent(binNo)*scale);
   inh->SetBinError(binNo,inh->GetBinError(binNo)*scale);
 }
