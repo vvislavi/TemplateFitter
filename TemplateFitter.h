@@ -25,7 +25,7 @@ using namespace RooFit;
 class TemplateFitter {
  public:
     TemplateFitter();
-    TemplateFitter(TH1 *datah):dataH(0),totFunc(0),fParList(0),fVarList(0),f_Dim(0) { SetData(datah); };
+    TemplateFitter(TH1 *datah):dataH(0),totFunc(0),fParList(0),fVarList(0),f_Dim(0),f_FObj(0) { SetData(datah); };
     ~TemplateFitter();
     void SetData(TH1 *inh) {if(dataH) delete dataH; dataH = (TH1*)inh->Clone("l_dataH"); dataH->SetDirectory(0); f_Dim=getDimension(); };
     void SetFitFunction(FunctionObject *fobj);
@@ -42,9 +42,11 @@ class TemplateFitter {
     TList *fParList;
     TList *fVarList;
     Int_t f_Dim;
+    FunctionObject *f_FObj; //Shallow copy
     Int_t getDimension();
     Bool_t rescaleHistogram(Bool_t divide=kFALSE);
     Int_t getAxNbins(TAxis *inax) {if(!inax) return 0; return inax->GetXbins()->fN; };
     void ScaleBin(TH1 *inh, Double_t scale, Int_t bx, Int_t by=0, Int_t bz=0);
+    Bool_t SetupFF();
 };
 #endif

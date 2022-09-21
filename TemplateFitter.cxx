@@ -15,12 +15,10 @@ TemplateFitter::~TemplateFitter() {
 };
 Bool_t TemplateFitter::Fit(Bool_t drawFit) {
   if(!f_Dim) {printf("Input histogram has dimension 0, cannot fit...\n"); return 0; };
-  if(!totFunc) {printf("No fit function set -- you probably forgot to call SetFitFunction(FunctionObject*). Not fitting...\n"); return 0; };
   if(!fParList || !fParList->GetEntries()) {printf("No parameters specified. You probably forgot to call AddParameter().\n"); return 0; };
   Int_t l_nDim = fVarList->GetEntries();
   if(l_nDim!=f_Dim) {printf("Number of variables (%i) is not the same as number of histogram dimensions (%i). Won't fit.\n",l_nDim,f_Dim); return 0;};
   if(!rescaleHistogram(kFALSE)) {printf("Could not rescale the histogram. Quitting...\n"); return 0; };
-  //To be checked for 2D!
   //Figure out dimensions & define variables
   RooRealVar x, y, z;
   Double_t xmin=0,xmax=0,ymin=0,ymax=0,zmin=0,zmax=0;
@@ -37,18 +35,11 @@ Bool_t TemplateFitter::Fit(Bool_t drawFit) {
     zmin=z.getMin();
     zmax=z.getMax();
   };
+  if(!SetupFF()) return kFALSE;
   totFunc->SetRange(xmin,xmax,ymin,ymax,zmin,zmax);
-  // RooRealVar x("x", "x", -TMath::Pi()/2, 0.75*TMath::TwoPi());
-  //Need RooVarList for histogram to get the right dimension. This is very stupid, b/c for function binding, this doesn't work.
   RooArgList lVarList;
   for(Int_t i=0;i<l_nDim;i++) lVarList.add(*((RooRealVar*)fVarList->At(i)));
   RooDataHist dsig("dsig", "dsig", lVarList, Import(*dataH,kFALSE));
-  // if(l_nDim==1)
-  // else if(l_nDim==2) dsig("dsig", "dsig", x, y, Import(*dataH));
-  // else if(l_nDim==3) dsig("dsig", "dsig", x, y, z, Import(*dataH));
-  //And go back to original unscaled distribution
-  //To be checked for 2D! dataH->Scale(1./dataH->GetBinWidth(1));
-  //Set up the argument ( = parameter) list
   RooArgList lArgList;
   for(Int_t i=0;i<fParList->GetEntries(); i++) lArgList.add(*((RooRealVar*)fParList->At(i)));
   //Set up the function
@@ -56,7 +47,7 @@ Bool_t TemplateFitter::Fit(Bool_t drawFit) {
   if(l_nDim==1) frfn = bindFunction((TF1*)totFunc,x,lArgList);
   else if(l_nDim==2) frfn = bindFunction((TF2*)totFunc,x,y,lArgList);
   else if(l_nDim==3) frfn = bindFunction((TF3*)totFunc,x,y,z,lArgList);
-
+  else { printf("Currently, only 1-3 dimensions are supported.\n"); return kFALSE; };
   //Perform fit
   frfn->chi2FitTo(dsig);//signal is divided by bin width at this point
   if(!drawFit) return 1;
@@ -77,8 +68,7 @@ Bool_t TemplateFitter::Fit(Bool_t drawFit) {
 void TemplateFitter::SetFitFunction(FunctionObject *fobj) {
   if(!fobj) {printf("Null pointer for function object passed! Not doing anything this time...\n"); return; };
   if(!fobj->isValid()) {printf("Fit function is not valid! Check isValid() method in your function implementation...\n"); return; };
-  if(totFunc) delete totFunc;
-  totFunc = new TF1("total_FitFunction",fobj,0,10,2);
+  f_FObj = fobj; //Just a shallow copy
 };
 void TemplateFitter::AddParameter(TString lName, TString lTitle, Double_t l_val, Double_t l_min, Double_t l_max) {
   if(!fParList) {
@@ -140,4 +130,10 @@ void TemplateFitter::ScaleBin(TH1 *inh, Double_t scale, Int_t bx, Int_t by, Int_
   Int_t binNo = inh->FindBin(bx,by,bz);
   inh->SetBinContent(binNo,inh->GetBinContent(binNo)*scale);
   inh->SetBinError(binNo,inh->GetBinError(binNo)*scale);
+}
+Bool_t TemplateFitter::SetupFF() {
+  if(!f_FObj) {printf("FunctionObject not set! You probably forgot to call SetFitFunction()...\n"); return kFALSE; };
+  if(totFunc) delete totFunc;
+  totFunc = new TF1("total_FitFunction",f_FObj,0,10,fParList->GetEntries());
+  return kTRUE;
 }
