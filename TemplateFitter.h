@@ -31,6 +31,7 @@ class TemplateFitter {
     void SetFitFunction(FunctionObject *fobj);
     void AddParameter(TString lName, TString lTitle, Double_t l_val, Double_t l_min, Double_t l_max); //parameters
     void AddVariable(TString lName, TString lTitle, Double_t l_min, Double_t l_max); //variables ( = dimensions)
+    void Clear() { fParList->Clear(); fVarList->Clear(); delete totFunc; totFunc=0; delete dataH; dataH=0;};
     TList *getParList() { return fParList; };
     // void ResetParList() {if(fArgList) delete fArgList; };
     // void SetBase(TH1 *inh) {if(tmplH) delete tmplH; tmplH = (TH2*)inh->Clone("l_tmplH"); tmplH->SetDirectory(0); };
