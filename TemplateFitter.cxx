@@ -72,6 +72,27 @@ void TemplateFitter::AddVariable(TString lName, TString lTitle, Double_t l_min, 
   RooRealVar *l_Var = new RooRealVar(lName,lTitle,l_min,l_max);
   fVarList->Add(l_Var);
 }
+Bool_t TemplateFitter::SetConst(Int_t ind, Bool_t isConst) {
+  if(ind>=fParList->GetEntries()) {
+    printf("Could not find the parameter requested (asked for var %i, while there are only %i variables)!\n",ind,fParList->GetEntries());
+    if(ind==fParList->GetEntries()) printf("Are you sure you did not forget that parameters start with index 0?\n");
+    return kFALSE;
+  };
+  RooRealVar *vr = (RooRealVar*)fParList->At(ind);
+  vr->setConstant(isConst);
+  return kTRUE;
+};
+Bool_t TemplateFitter::SetConst(Int_t ind, Double_t cVal) {
+  if(ind>=fParList->GetEntries()) {
+    printf("Could not find the parameter requested (asked for var %i, while there are only %i variables)!\n",ind,fParList->GetEntries());
+    if(ind==fParList->GetEntries()) printf("Are you sure you did not forget that parameters start with index 0?\n");
+    return kFALSE;
+  };
+  RooRealVar *vr = (RooRealVar*)fParList->At(ind);
+  vr->setVal(cVal);
+  vr->setConstant(kTRUE);
+  return kTRUE;
+};
 Int_t TemplateFitter::getDimension() {
   if(!dataH) return 0;
   Int_t rDim = 0;
