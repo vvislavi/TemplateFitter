@@ -1,3 +1,12 @@
+/*
+Vytautas Vislavicius
+vytautas.vislavicius@cern.ch
+
+Generic 1/2/3D chi2 fitter using RooFit. Functions, templates, you name it, it fits it.
+Code is simple, but a lot of thought went into it. I have no way to control who, how,
+and for which purpose one uses it, so please be fair and whenever using it, at least
+acknowledge clearly the author of this.
+*/
 #ifndef TEMPLATEFITTER__H
 #define TEMPLATEFITTER__H
 #include "RooRealVar.h"
