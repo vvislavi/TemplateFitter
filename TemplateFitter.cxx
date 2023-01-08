@@ -21,43 +21,77 @@ TemplateFitter::~TemplateFitter() {
   delete totFunc;
   delete fParList;
 };
-Bool_t TemplateFitter::Fit(Bool_t drawFit) {
+void TemplateFitter::SetData(TH1 *inh) {
+   if(dataH) delete dataH;
+   dataH = (TH1*)inh->Clone("l_dataH");
+   dataH->SetDirectory(0);
+   f_Dim=getDimension();
+   f_Ready=kFALSE;
+}
+Bool_t TemplateFitter::PrepareForFitting() {
+  if(f_Ready) return kTRUE;
   if(!f_Dim) {printf("Input histogram has dimension 0, cannot fit...\n"); return 0; };
   if(!fParList || !fParList->GetEntries()) {printf("No parameters specified. You probably forgot to call AddParameter().\n"); return 0; };
   Int_t l_nDim = fVarList->GetEntries();
   if(l_nDim!=f_Dim) {printf("Number of variables (%i) is not the same as number of histogram dimensions (%i). Won't fit.\n",l_nDim,f_Dim); return 0;};
   if(!rescaleHistogram(kFALSE)) {printf("Could not rescale the histogram. Quitting...\n"); return 0; };
   //Figure out dimensions & define variables
-  RooRealVar x, y, z;
+  RooRealVar *x, *y, *z;
   Double_t xmin=0,xmax=0,ymin=0,ymax=0,zmin=0,zmax=0;
   if(l_nDim>0) {
-    x = *((RooRealVar*)fVarList->At(0));
-    xmin=x.getMin(); xmax=x.getMax();
+    x = ((RooRealVar*)fVarList->At(0));
+    xmin=x->getMin(); xmax=x->getMax();
   }
   if(l_nDim>1) {
-    y = *((RooRealVar*)fVarList->At(1));
-    ymin=y.getMin(); ymax=y.getMax();
+    y = ((RooRealVar*)fVarList->At(1));
+    ymin=y->getMin(); ymax=y->getMax();
   };
   if(l_nDim>2) {
-    z = *((RooRealVar*)fVarList->At(2));
-    zmin=z.getMin();
-    zmax=z.getMax();
+    z = ((RooRealVar*)fVarList->At(2));
+    zmin=z->getMin(); zmax=z->getMax();
   };
   if(!SetupFF()) return kFALSE;
   totFunc->SetRange(xmin,xmax,ymin,ymax,zmin,zmax);
-  RooArgList lVarList;
-  for(Int_t i=0;i<l_nDim;i++) lVarList.add(*((RooRealVar*)fVarList->At(i)));
-  RooDataHist dsig("dsig", "dsig", lVarList, Import(*dataH,kFALSE));
   RooArgList lArgList;
   for(Int_t i=0;i<fParList->GetEntries(); i++) lArgList.add(*((RooRealVar*)fParList->At(i)));
   //Set up the function
-  RooAbsReal *frfn;
-  if(l_nDim==1) frfn = bindFunction((TF1*)totFunc,x,lArgList);
-  else if(l_nDim==2) frfn = bindFunction((TF2*)totFunc,x,y,lArgList);
-  else if(l_nDim==3) frfn = bindFunction((TF3*)totFunc,x,y,z,lArgList);
+  if(f_FitFunc) delete f_FitFunc;
+  if(l_nDim==1) f_FitFunc = bindFunction((TF1*)totFunc,*x,lArgList);
+  else if(l_nDim==2) f_FitFunc = bindFunction((TF2*)totFunc,*x,*y,lArgList);
+  else if(l_nDim==3) f_FitFunc = bindFunction((TF3*)totFunc,*x,*y,*z,lArgList);
   else { printf("Currently, only 1-3 dimensions are supported.\n"); return kFALSE; };
+  //Prepare profiling for statistics
+  if(!fStatErr) delete fStatErr;
+  fStatErr = new TProfile("StatErrors","Stat errors",fParList->GetEntries(),0,fParList->GetEntries());
+  fStatErr->SetErrorOption("s");
+  for(Int_t i=0; i<fParList->GetEntries(); i++)
+    fStatErr->GetXaxis()->SetBinLabel(i+1,((RooRealVar*)fParList->At(i))->GetName());
+  f_Ready = kTRUE;
+  return kTRUE;
+}
+Bool_t TemplateFitter::Fit(Int_t nRefits) {
+  if(!PrepareForFitting()) return 0;
+  Int_t l_nDim = fVarList->GetEntries();
+  RooArgList lVarList;
+  for(Int_t i=0;i<l_nDim;i++) lVarList.add(*((RooRealVar*)fVarList->At(i)));
+  RooDataHist dsig("dsig", "dsig", lVarList, Import(*dataH,kFALSE));
   //Perform fit
-  frfn->chi2FitTo(dsig);//signal is divided by bin width at this point
+  f_FitFunc->chi2FitTo(dsig);//signal is divided by bin width at this point
+  if(nRefits<=0) return 1;
+  // for(Int_t i=0;i<fParList->GetEntries();i++) {mws.push_back(0); ws.push_back(0);};
+  for(Int_t i=0;i<nRefits;i++) {
+    f_FObj->Randomize();
+    Randomize(kFALSE);
+    f_FitFunc->chi2FitTo(dsig);
+    for(Int_t j=0;j<fParList->GetEntries();j++)
+      fStatErr->Fill(j,getVal(j),getErr(j));
+  };
+  for(Int_t i=0;i<fParList->GetEntries();i++) {
+    ((RooRealVar*)fParList->At(i))->setVal(fStatErr->GetBinContent(i));
+    ((RooRealVar*)fParList->At(i))->setError(fStatErr->GetBinError(i));
+  };
+  Randomize(kTRUE); //restore the original data histogram
+  f_FObj->Restore();
   return 1;
 };
 void TemplateFitter::SetFitFunction(FunctionObject *fobj) {
@@ -149,4 +183,23 @@ Bool_t TemplateFitter::SetupFF() {
   if(totFunc) delete totFunc;
   totFunc = new TF1("total_FitFunction",f_FObj,0,10,fParList->GetEntries());
   return kTRUE;
+}
+void TemplateFitter::Randomize(Bool_t RestoreOriginal) {
+  if(!f_Ready) {
+    printf("Warning! The fitter has not been called yet, and so the data histogram has not been scaled yet. Please run TemplateFitter::Fit() or TemplateFitter::PrepareForFitting() to make sure that the histogram is ready for fitting!\n");
+  };
+  if(!dataBU) {
+    dataBU = (TH1*)dataH->Clone("l_dataH_Backup");
+    dataBU->SetDirectory(0);
+    if(RestoreOriginal) return;
+  };
+  if(RestoreOriginal) {
+    if(dataH) delete dataH;
+    dataH = (TH1*)dataBU->Clone("l_dataH");
+    dataH->SetDirectory(0);
+    return;
+  }
+  for(Int_t i=1;i<=dataH->GetNbinsX();i++) {
+    dataH->SetBinContent(i,gRandom->Gaus(dataBU->GetBinContent(i),dataBU->GetBinError(i)));
+  };
 }
