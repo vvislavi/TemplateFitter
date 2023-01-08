@@ -2,7 +2,7 @@
 #include "TemplateFunction.C"
 TH1 *lm, *hm;
 void Init() {
-  TFile *tf = new TFile("projForV_Lambda2.root");
+  TFile *tf = new TFile("dummy.root");
   lm = (TH1*)tf->Get("proj_TPCFMDC_1D_60_100");
   hm = (TH1*)tf->Get("proj_TPCFMDC_1D_0_20");
 };
@@ -27,6 +27,10 @@ void Example_2() {
   if(!dummy) return;
   Double_t v21 = ft->getVal(2); //0 for G, 1 for F, 2 for v2, 3 for v3
   Double_t v21e= ft->getErr(2);
-  printf("V2 values from fit:\n");
-  printf("No rebin: V2 = %f +- %f\n",v21,v21e);
+  Double_t v31 = ft->getVal(3); //0 for G, 1 for F, 2 for v2, 3 for v3
+  Double_t v31e= ft->getErr(3);
+  printf("Values from fit:\n");
+  printf("V2 = %f +- %f\n",v21,v21e);
+  printf("V3 = %f +- %f\n",v31,v31e);
+  printf("Warning! These results were obtained using dummy distributions!\n");
 }
