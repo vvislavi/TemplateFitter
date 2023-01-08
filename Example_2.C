@@ -23,7 +23,7 @@ void Example_2() {
   ft->SetFitFunction(fobj);
   //Perform fit:
   printf("About to fit\n");
-  Int_t dummy = ft->Fit(kTRUE); //Do not draw performance at this point. Return value of Fit() is false if no base is set.
+  Int_t dummy = ft->Fit(0); //Do not draw performance at this point. Return value of Fit() is false if no base is set.
   if(!dummy) return;
   Double_t v21 = ft->getVal(2); //0 for G, 1 for F, 2 for v2, 3 for v3
   Double_t v21e= ft->getErr(2);

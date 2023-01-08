@@ -87,8 +87,8 @@ Bool_t TemplateFitter::Fit(Int_t nRefits) {
       fStatErr->Fill(j,getVal(j),getErr(j));
   };
   for(Int_t i=0;i<fParList->GetEntries();i++) {
-    ((RooRealVar*)fParList->At(i))->setVal(fStatErr->GetBinContent(i));
-    ((RooRealVar*)fParList->At(i))->setError(fStatErr->GetBinError(i));
+    ((RooRealVar*)fParList->At(i))->setVal(fStatErr->GetBinContent(i+1));
+    ((RooRealVar*)fParList->At(i))->setError(fStatErr->GetBinError(i+1));
   };
   Randomize(kTRUE); //restore the original data histogram
   f_FObj->Restore();
