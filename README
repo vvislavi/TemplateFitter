@@ -1,0 +1,17 @@
+Vytautas Vislavicius
+vytautas.vislavicius@cern.ch
+***This is the first/quick README of the fitter that will be updated in the future.***
+
+Generic 1/2/3D chi2 fitter using RooFit. Functions, templates, you name it, it fits it.
+Example of the fitter has been included in Example_2.C. Depending on your needs, it might be
+sufficient to simply copy the macro from void Example_2() and with some modifications depending on your needs, the code should be running in no time.
+
+Few things to consider:
+-- The Example_2() uses two dummy histograms that mimic 2-particle correlation at high and low multiplicities, here called as target and template, respectively. The template is combined with Fourier harmonics and fitted into the target distribution to extract the scale of the template as well as different coefficients of Fourier harmonics. In practice this corresponds to template fit method to calculate v2 and v3 coefficients.
+-- The MINOS treatment of uncertainties in RooFit is somewhat different, the reference addressing it will be added later
+-- The fit function is defined in TemplateFunction.C. This has to be a class inheriting from FunctionObject and overriding the "()" and "isValid()" operator/function. The "()" operator contains a user-defined fit function, which can be a combination of analytical expressions, histograms, graphs, and virtually anything else. The function "isValid()" has to be defined by the user to check if all the relevant contents are set (e.g. if the evaluation of the function requires a histogram, in the "isValid()" function one would check if the histogram is set correct.). Please also note that since the "()" operator is treated as a TFX in the fitter, the possible uncertainties within the function (eg if there is a histogram with uncertainties within the function), these uncertainties will not contribute to the calculation of the chi2.
+-- I am also working on including a generic TMinuit fitter in the class, which would allow for a user-defined chi2 prescription, this will probably have to wait a little bit more.
+
+Overall, code is simple, but a lot of thought went into it. I have no way to control who, how,
+and for which purpose one uses it, so please be fair and whenever using it, at least
+acknowledge clearly the author of this.
